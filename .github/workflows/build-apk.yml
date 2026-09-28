@@ -15,12 +15,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check project files
+      - name: Unzip project if needed
         run: |
+          set -e
+          echo "=== Repo root before ==="
           ls -la
-          test -f settings.gradle.kts
-          test -f app/build.gradle.kts
-          test -f app/src/main/java/com/example/dualaudiorouter/DualAudioService.kt
+
+          ZIP=$(ls DualAudio*.zip 2>/dev/null | head -1 || true)
+
+          if [ -n "$ZIP" ]; then
+            echo "Found zip: $ZIP – extracting..."
+            unzip -o "$ZIP"
+            for d in DualAudioRouter DualAudioRouter_clean DualAudioRouter_v* dual_src dual_clean; do
+              if [ -d "$d" ]; then
+                echo "Flattening $d"
+                cp -a "$d"/. .
+                rm -rf "$d"
+              fi
+            done
+            rm -f DualAudio*.zip
+            echo "=== After extract ==="
+            ls -la
+          else
+            echo "No zip found – assuming source is already at root"
+          fi
+
+          echo "=== Checking required files ==="
+          ls -la app/ || true
+          test -f settings.gradle.kts || { echo "ERROR: settings.gradle.kts missing"; exit 1; }
+          test -f app/build.gradle.kts || { echo "ERROR: app/build.gradle.kts missing"; exit 1; }
+          test -f app/src/main/java/com/example/dualaudiorouter/DualAudioService.kt || { echo "ERROR: DualAudioService.kt missing"; exit 1; }
+          echo "All required files present."
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
